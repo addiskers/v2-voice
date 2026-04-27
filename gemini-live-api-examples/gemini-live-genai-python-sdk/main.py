@@ -24,6 +24,9 @@ logger = logging.getLogger(__name__)
 # Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 MODEL = os.getenv("MODEL", "gemini-3.1-flash-live-preview")
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "+19785715824")
 
 # ============ MOCK BACKEND DATA ============
 
@@ -250,6 +253,37 @@ async def twilio_media_stream(websocket: WebSocket):
             await websocket.close()
         except:
             pass
+
+
+@app.post("/call-me")
+async def call_me(request: Request):
+    """Make Twilio call a phone number and connect to the AI agent."""
+    from twilio.rest import Client
+
+    body = await request.json()
+    to_number = body.get("phone")
+    if not to_number:
+        return {"error": "Missing 'phone' field. Send {\"phone\": \"+91XXXXXXXXXX\"}"}
+
+    if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN:
+        return {"error": "Twilio credentials not configured"}
+
+    host = request.headers.get("host", "localhost")
+    protocol = "https" if "onrender.com" in host else request.url.scheme
+    webhook_url = f"{protocol}://{host}/twilio/voice"
+
+    try:
+        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        call = client.calls.create(
+            to=to_number,
+            from_=TWILIO_PHONE_NUMBER,
+            url=webhook_url,
+        )
+        logger.info(f"Outbound call initiated: {call.sid} to {to_number}")
+        return {"success": True, "call_sid": call.sid, "to": to_number}
+    except Exception as e:
+        logger.error(f"Failed to initiate call: {e}")
+        return {"error": str(e)}
 
 
 if __name__ == "__main__":
