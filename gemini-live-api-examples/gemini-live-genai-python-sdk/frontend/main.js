@@ -391,8 +391,10 @@ if (callMeBtn) {
       });
       const data = await res.json();
       if (data.success) {
-        callMeStatus.textContent = "Calling " + phone + " — pick up your phone!";
+        callMeStatus.textContent = "Calling " + phone + " — pick up your phone! Opening live transcript...";
         callMeStatus.className = "call-me-status success";
+        // Open live transcript dashboard in new tab
+        setTimeout(() => window.open("/live", "_blank"), 1000);
       } else {
         callMeStatus.textContent = data.error || "Failed to call";
         callMeStatus.className = "call-me-status error";

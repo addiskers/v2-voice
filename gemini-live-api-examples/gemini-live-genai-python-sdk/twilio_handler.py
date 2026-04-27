@@ -98,12 +98,13 @@ def pcm24k_to_mulaw(pcm_bytes: bytes) -> bytes:
 class TwilioMediaBridge:
     """Bridges a Twilio Media Stream WebSocket with a Gemini Live session."""
 
-    def __init__(self, websocket, gemini_client, text_trigger):
+    def __init__(self, websocket, gemini_client, text_trigger, on_event=None):
         self.ws = websocket
         self.gemini = gemini_client
         self.stream_sid = None
         self.call_sid = None
         self.text_trigger = text_trigger
+        self.on_event = on_event  # async callback for live transcript
 
         # Queues for Gemini
         self.audio_input_queue = asyncio.Queue()
@@ -171,9 +172,19 @@ class TwilioMediaBridge:
         except Exception as e:
             logger.error(f"Twilio receive error: {e}")
 
+    async def _emit(self, event):
+        """Send event to live transcript watchers."""
+        if self.on_event:
+            try:
+                await self.on_event(event)
+            except Exception:
+                pass
+
     async def run(self):
         """Run the bridge: Twilio <-> Gemini."""
         twilio_task = asyncio.create_task(self.handle_twilio_messages())
+
+        await self._emit({"type": "call_start", "call_sid": self.call_sid or ""})
 
         try:
             async for event in self.gemini.start_session(
@@ -183,11 +194,15 @@ class TwilioMediaBridge:
                 audio_output_callback=self.audio_output_callback,
                 audio_interrupt_callback=self.audio_interrupt_callback,
             ):
-                if event and event.get("type") == "error":
-                    logger.error(f"Gemini error during Twilio call: {event}")
-                    break
+                if event:
+                    # Broadcast transcript/tool events to live watchers
+                    await self._emit(event)
+                    if event.get("type") == "error":
+                        logger.error(f"Gemini error during Twilio call: {event}")
+                        break
         except Exception as e:
             logger.error(f"Gemini session error: {e}")
         finally:
+            await self._emit({"type": "call_end"})
             twilio_task.cancel()
             logger.info("Twilio-Gemini bridge closed")
