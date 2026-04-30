@@ -46,7 +46,7 @@ VEHICLES = {
                 "service_number": 1,
                 "date": "2025-02-15",
                 "km": 1023,
-                "workshop": "Kataria Automobiles, Ahmedabad",
+                "workshop": "Nanda Automobiles Pvt. Ltd., Ahmedabad",
                 "type": "First Free Service",
                 "cost": 0
             },
@@ -82,7 +82,7 @@ def handle_schedule_pickup(**kwargs):
         "pickup_time": kwargs.get("time", "9:30 AM"),
         "driver_name": "Rajesh Kumar",
         "driver_phone": "+919876500001",
-        "workshop": "Kataria Automobiles, S.G. Highway, Ahmedabad",
+        "workshop": "Nanda Automobiles Pvt. Ltd., VEJALPUR",
         "special_instructions": kwargs.get("special_instructions", ""),
         "note": "Driver details will be sent via SMS on the morning of pickup."
     }
